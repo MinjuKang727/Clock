@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아날로그 시계 & Count Up / Count Down · 집중 모드 LED 타이머</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent: #0f766e;
+      --accent-hover: #0d9488;
+      --danger: #dc2626;
+      --soft: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app-grid {
+      max-width: 1520px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 410px 1fr 350px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .app-grid.panel-collapsed {
+      grid-template-columns: 240px 1fr 350px;
+    }
+
+    @media (max-width: 1260px) {
+      .app-grid,
+      .app-grid.panel-collapsed {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+
+    .panel-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .panel-top-bar h2 {
+      font-size: 15.5px;
+      margin: 0;
+    }
+
+    /* 아코디언 섹션 */
+    .acc-section {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: var(--soft);
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .acc-header {
+      width: 100%;
+      background: #f1f5f9;
+      color: #1e293b;
+      border-radius: 0;
+      padding: 8px 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-align: left;
+    }
+
+    .acc-header:hover {
+      background: #e2e8f0;
+    }
+
+    .acc-arrow {
+      font-size: 11px;
+      color: #475569;
+      transition: transform 0.15s;
+    }
+
+    .acc-section.collapsed .acc-arrow {
+      transform: rotate(-90deg);
+    }
+
+    .acc-body {
+      padding: 9px 10px;
+      display: block;
+    }
+
+    .acc-section.collapsed .acc-body {
+      display: none;
+    }
+
+    .settings-collapsible.collapsed {
+      display: none;
+    }
+
+    .field {
+      margin-bottom: 10px;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      background: #fff;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .preset-btn {
+      background: #ffffff;
+      color: #1e293b;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 7px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover {
+      background: #dbeafe;
+      border-color: #60a5fa;
+      color: #1d4ed8;
+    }
+
+    .preset-btn.active-mode {
+      background: #dcfce7;
+      border-color: #16a34a;
+      color: #166534;
+    }
+
+    .preset-btn span {
+      font-size: 10.5px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .inline-input {
+      display: flex;
+      gap: 6px;
+    }
+
+    .radio-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 7px;
+    }
+
+    .radio-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+      margin: 0;
+    }
+
+    .radio-pill input {
+      margin: 0;
+    }
+
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .check-item input {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .split-config {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-left: 22px;
+    }
+
+    .split-config input {
+      width: 72px;
+      padding: 4px 6px;
+      font-size: 12px;
+    }
+
+    .split-config select {
+      width: auto;
+      padding: 4px 6px;
+      font-size: 12px;
+    }
+
+    .tts-sub-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 7px;
+    }
+
+    .alarm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .alarm-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 190px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .alarm-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .alarm-card.triggered {
+      border-color: #93c5fd;
+      background: #eff6ff;
+    }
+
+    .alarm-top-row,
+    .alarm-bottom-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 26px;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .alarm-card select,
+    .alarm-card input {
+      padding: 4px 5px;
+      font-size: 12px;
+    }
+
+    .hms-offset-box {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-wrap: nowrap;
+    }
+
+    .hms-offset-box input {
+      width: 38px;
+      text-align: center;
+      padding: 4px 2px;
+    }
+
+    .hms-offset-box span {
+      font-size: 10.5px;
+      color: #475569;
+      font-weight: 700;
+      white-space: nowrap;
+      margin-right: 2px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-accent:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .btn-outline {
+      background: #ffffff;
+      color: #1e293b;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-outline:hover {
+      background: #f1f5f9;
+    }
+
+    .btn-sm {
+      padding: 5px 8px;
+      font-size: 11.5px;
+      white-space: nowrap;
+    }
+
+    .btn-icon {
+      padding: 5px 0;
+      font-size: 12px;
+      text-align: center;
+      border-radius: 5px;
+    }
+
+    .btn-del {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .btn-del:hover {
+      background: #fecaca;
+    }
+
+    .btn-play {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    .btn-play:hover {
+      background: #bfdbfe;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    /* 중앙 시계 영역 */
+    .center-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .led-board {
+      width: 100%;
+      max-width: 650px;
+      margin-bottom: 12px;
+      background-color: #090d16;
+      background-image:
+        radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 0),
+        radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 0);
+      background-size: 6px 6px;
+      background-position: 0 0, 3px 3px;
+      border: 4px solid #1e293b;
+      border-radius: 10px;
+      box-shadow:
+        inset 0 2px 10px rgba(0, 0, 0, 0.9),
+        0 4px 12px rgba(15, 23, 42, 0.18);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .led-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 5px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #334155;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #38bdf8;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .led-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    .led-viewport {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+    }
+
+    .led-text {
+      font-family: "Malgun Gothic", Consolas, sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      white-space: nowrap;
+      color: #38bdf8;
+      text-shadow:
+        0 0 6px rgba(56, 189, 248, 0.85),
+        0 0 14px rgba(56, 189, 248, 0.45);
+    }
+
+    .led-board.active .led-tag {
+      color: #fbbf24;
+      border-color: rgba(251, 191, 36, 0.45);
+    }
+    .led-board.active .led-dot {
+      background: #fbbf24;
+      box-shadow: 0 0 10px #fbbf24;
+      animation: ledBlink 0.7s infinite alternate;
+    }
+    .led-board.active .led-text {
+      color: #fbbf24;
+      text-shadow:
+        0 0 7px rgba(251, 191, 36, 0.9),
+        0 0 18px rgba(245, 158, 11, 0.6);
+    }
+
+    .led-board.finish .led-tag {
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.5);
+    }
+    .led-board.finish .led-dot {
+      background: #ef4444;
+      box-shadow: 0 0 12px #ef4444;
+      animation: ledBlink 0.45s infinite alternate;
+    }
+    .led-board.finish .led-text {
+      color: #f87171;
+      text-shadow:
+        0 0 8px rgba(248, 113, 113, 0.95),
+        0 0 20px rgba(239, 68, 68, 0.7);
+    }
+
+    .led-viewport.scrolling {
+      justify-content: flex-start;
+    }
+    .led-viewport.scrolling .led-text {
+      display: inline-block;
+      padding-left: 100%;
+      animation: ledMarquee 11s linear infinite;
+    }
+
+    @keyframes ledBlink {
+      from { opacity: 0.35; }
+      to { opacity: 1; }
+    }
+
+    @keyframes ledMarquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+
+    .canvas-box {
+      width: 100%;
+      max-width: 630px;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .readouts {
+      width: 100%;
+      max-width: 650px;
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+    }
+
+    .readout-box {
+      background: var(--soft);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 9px 10px;
+      text-align: center;
+    }
+
+    .readout-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .readout-val {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .readout-val.danger {
+      color: var(--danger);
+    }
+
+    /* 우측 구간 기록 패널 */
+    .lap-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .lap-header-actions {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      position: relative;
+    }
+
+    .save-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 5px;
+      width: 185px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+      padding: 5px;
+      z-index: 30;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .save-menu.open {
+      display: flex;
+    }
+
+    .save-menu-item {
+      width: 100%;
+      background: transparent;
+      color: #1e293b;
+      padding: 7px 9px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .save-menu-item:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .save-menu-divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 2px 4px;
+    }
+
+    .lap-controls {
+      background: var(--soft);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 9px 10px;
+      margin-bottom: 10px;
+    }
+
+    .icon-picker {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .icon-choice {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 5px 2px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .icon-choice .emo {
+      font-size: 15px;
+      line-height: 1.1;
+    }
+
+    .icon-choice.selected {
+      background: #dbeafe;
+      border-color: #2563eb;
+      color: #1d4ed8;
+    }
+
+    .lap-input-row {
+      margin-bottom: 8px;
+    }
+
+    .btn-lap-big {
+      width: 100%;
+      padding: 13px 14px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      border-radius: 9px;
+      box-shadow: 0 3px 8px rgba(15, 118, 110, 0.22);
+    }
+
+    .lap-list {
+      max-height: 490px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 2px;
+    }
+
+    .lap-item {
+      background: var(--soft);
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid var(--accent);
+      border-radius: 7px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .lap-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lap-icon-select {
+      width: auto;
+      padding: 3px 4px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 5px;
+      background: #ffffff;
+    }
+
+    .lap-name-input {
+      flex: 1;
+      padding: 3px 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0f172a;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      background: transparent;
+    }
+
+    .lap-name-input:hover,
+    .lap-name-input:focus {
+      background: #ffffff;
+      border-color: #cbd5e1;
+    }
+
+    .lap-del-btn {
+      background: transparent;
+      color: #94a3b8;
+      padding: 2px 5px;
+      font-size: 12px;
+    }
+    .lap-del-btn:hover {
+      color: #dc2626;
+      background: #fee2e2;
+    }
+
+    .lap-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 3px;
+      border-top: 1px dashed #e2e8f0;
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    .lap-digital {
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .lap-time {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .empty-msg {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12.5px;
+      padding: 24px 10px;
+      background: var(--soft);
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      line-height: 1.5;
+    }
+
+    .status-line {
+      margin-top: 9px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .toast-msg {
+      margin-bottom: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #0f766e;
+      text-align: center;
+      min-height: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-grid" id="appGrid">
+    <!-- 좌측: 접기/펼치기 가능한 시간 · 프리셋 · TTS · 알림 설정 -->
+    <div class="card" id="settingsCard">
+      <div class="panel-top-bar">
+        <h2>설정</h2>
+        <button type="button" class="btn-outline btn-sm" id="toggleAllSettingsBtn">설정 접기</button>
+      </div>
+
+      <div class="settings-collapsible" id="settingsCollapsible">
+        <!-- 1. 프리셋 -->
+        <div class="acc-section" data-acc="preset">
+          <button type="button" class="acc-header">
+            <span>시험 · 학습 프리셋</span>
+            <span class="acc-arrow">▼</span>
+          </button>
+          <div class="acc-body">
+            <div class="preset-grid">
+              <button type="button" class="preset-btn" data-preset="gongmuwon9">
+                9급 공무원 <span>110분</span>
+              </button>
+              <button type="button" class="preset-btn" data-preset="gunmuwon9">
+                군무원 9급 <span>75분</span>
+              </button>
+              <button type="button" class="preset-btn" data-preset="suneung_kor">
+                수능 국어 <span>80분</span>
+              </button>
+              <button type="button" class="preset-btn" data-preset="suneung_math">
+                수능 수학 <span>100분</span>
+              </button>
+              <button type="button" class="preset-btn" data-preset="suneung_eng">
+                수능 영어 <span>70분</span>
+              </button>
+              <button type="button" class="preset-btn" data-preset="focus_loop">
+                집중 모드 <span>50+10∞</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 시작 / 종료 시간 -->
+        <div class="acc-section" data-acc="time">
+          <button type="button" class="acc-header">
+            <span>시작 및 종료 시간</span>
+            <span class="acc-arrow">▼</span>
+          </button>
+          <div class="acc-body">
+            <div class="field">
+              <label for="startTimeInput">시작 시간 (HH:MM:SS)</label>
+              <div class="inline-input">
+                <input type="text" id="startTimeInput" />
+                <button type="button" class="btn-secondary btn-sm" id="nowBtn">현재 시각</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>종료 시간 설정 방식</label>
+              <div class="radio-group">
+                <label class="radio-pill">
+                  <input type="radio" name="endMode" value="duration" checked />
+                  총 시험 시간
+                </label>
+                <label class="radio-pill">
+                  <input type="radio" name="endMode" value="exact" />
+                  정확한 시각
+                </label>
+              </div>
+
+              <div id="durationInputs" class="field-row">
+                <div>
+                  <label for="durMin">분 (min)</label>
+                  <input type="number" id="durMin" value="110" min="0" max="1440" />
+                </div>
+                <div>
+                  <label for="durSec">초 (sec)</label>
+                  <input type="number" id="durSec" value="0" min="0" max="59" />
+                </div>
+              </div>
+
+              <div id="exactInput" style="display: none;">
+                <label for="endTimeInput">종료 시각 (HH:MM:SS)</label>
+                <input type="text" id="endTimeInput" value="11:50:00" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 시계 표시 항목 -->
+        <div class="acc-section" data-acc="display">
+          <button type="button" class="acc-header">
+            <span>시계 표시 항목</span>
+            <span class="acc-arrow">▼</span>
+          </button>
+          <div class="acc-body">
+            <div class="check-list">
+              <label class="check-item">
+                <input type="checkbox" id="chkDigital" checked />
+                디지털 시계 보기 (HH:MM:SS)
+              </label>
+
+              <label class="check-item">
+                <input type="checkbox" id="chkCountdown" checked />
+                Count Down 보기 (hh:mm:ss:ms)
+              </label>
+
+              <label class="check-item">
+                <input type="checkbox" id="chkCountup" checked />
+                Count Up 보기 (hh:mm:ss:ms)
+              </label>
+
+              <label class="check-item">
+                <input type="checkbox" id="chkSplit" />
+                정해진 시간씩 끊어서 Count Up
+              </label>
+              <div class="split-config">
+                <input type="number" id="splitVal" value="10" min="1" max="1440" />
+                <select id="splitUnit">
+                  <option value="60" selected>분마다</option>
+                  <option value="1">초마다</option>
+                  <option value="3600">시간마다</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. TTS 목소리 & 속도 -->
+        <div class="acc-section" data-acc="tts">
+          <button type="button" class="acc-header">
+            <span>TTS 목소리 및 속도</span>
+            <span class="acc-arrow">▼</span>
+          </button>
+          <div class="acc-body">
+            <label for="voiceSelect">목소리 선택</label>
+            <div class="inline-input">
+              <select id="voiceSelect"></select>
+              <button type="button" class="btn-secondary btn-sm" id="testVoiceBtn">미리듣기</button>
+            </div>
+            <div class="tts-sub-row">
+              <div>
+                <label for="ttsRate">말하기 속도</label>
+                <select id="ttsRate">
+                  <option value="0.85">느리게 (0.85x)</option>
+                  <option value="1.0">보통 (1.0x)</option>
+                  <option value="1.15">약간 빠르게 (1.15x)</option>
+                  <option value="1.3" selected>빠르게 (1.3x)</option>
+                </select>
+              </div>
+              <div>
+                <label for="ttsPitch">음높이 (톤)</label>
+                <select id="ttsPitch">
+                  <option value="0.85">낮은 톤 (차분함)</option>
+                  <option value="1.0" selected>기본 톤 (1.0)</option>
+                  <option value="1.15">높은 톤 (밝음)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. 알림 목록 -->
+        <div class="acc-section" data-acc="alarm">
+          <button type="button" class="acc-header">
+            <span>알림 목록 (시·분·초 기준)</span>
+            <span class="acc-arrow">▼</span>
+          </button>
+          <div class="acc-body">
+            <div class="alarm-header">
+              <span style="font-size: 11.5px; color: #475569;">비워두면 종료 N분 전/후 자동 안내</span>
+              <button type="button" class="btn-secondary btn-sm" id="addAlarmBtn">+ 추가</button>
+            </div>
+            <div class="alarm-list" id="alarmList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-grid">
+        <button type="button" class="btn-primary" id="startBtn">시작</button>
+        <button type="button" class="btn-secondary" id="resetBtn">초기화</button>
+      </div>
+
+      <div class="status-line" id="statusText">대기 중</div>
+    </div>
+
+    <!-- 중앙: LED 전광판 + 아날로그 시계 -->
+    <div class="card center-card">
+      <div class="led-board" id="ledBoard">
+        <div class="led-tag">
+          <span class="led-dot"></span>
+          <span id="ledTagLabel">STANDBY</span>
+        </div>
+        <div class="led-viewport" id="ledViewport">
+          <span class="led-text" id="ledText">알림 대기 중</span>
+        </div>
+      </div>
+
+      <div class="canvas-box">
+        <canvas id="clockCanvas" width="760" height="760"></canvas>
+      </div>
+
+      <div class="readouts" id="readoutsArea">
+        <div class="readout-box" id="boxDigital">
+          <div class="readout-label">디지털 시계</div>
+          <div class="readout-val" id="valDigital">--:--:--</div>
+        </div>
+        <div class="readout-box" id="boxCountdown">
+          <div class="readout-label" id="lblCountdown">Count Down (남은 시간)</div>
+          <div class="readout-val" id="valCountdown">00:00:00:000</div>
+        </div>
+        <div class="readout-box" id="boxCountup">
+          <div class="readout-label">Count Up (경과 시간)</div>
+          <div class="readout-val" id="valCountup">00:00:00:000</div>
+        </div>
+        <div class="readout-box" id="boxSplit" style="display: none;">
+          <div class="readout-label">구간 Count Up</div>
+          <div class="readout-val" id="valSplit">00:00:00:000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 우측: 구간 기록 & 내보내기/불러오기 -->
+    <div class="card">
+      <div class="lap-header-row">
+        <h2 style="margin: 0; padding: 0; border: none;">구간 기록</h2>
+        <div class="lap-header-actions">
+          <button type="button" class="btn-secondary btn-sm" id="clearLapBtn">기록 지우기</button>
+          <button type="button" class="btn-outline btn-sm" id="saveMenuBtn">저장 ▾</button>
+
+          <div class="save-menu" id="saveMenu">
+            <button type="button" class="save-menu-item" id="loadTxtBtn">📂 기록 불러오기 (.txt)</button>
+            <div class="save-menu-divider"></div>
+            <button type="button" class="save-menu-item" id="copyTextBtn">📋 텍스트 복사</button>
+            <button type="button" class="save-menu-item" id="saveTxtBtn">📄 TXT 저장</button>
+            <button type="button" class="save-menu-item" id="copyImgBtn">🖼️ 이미지 복사</button>
+            <button type="button" class="save-menu-item" id="saveImgBtn">💾 PNG 저장</button>
+          </div>
+          <input type="file" id="txtFileInput" accept=".txt,text/plain" style="display: none;" />
+        </div>
+      </div>
+
+      <div class="toast-msg" id="toastMsg"></div>
+
+      <div class="lap-controls">
+        <div class="icon-picker" id="iconPicker">
+          <button type="button" class="icon-choice selected" data-icon="📖" data-label="공부">
+            <span class="emo">📖</span>공부
+          </button>
+          <button type="button" class="icon-choice" data-icon="✍️" data-label="문제풀이">
+            <span class="emo">✍️</span>풀이
+          </button>
+          <button type="button" class="icon-choice" data-icon="🔍" data-label="오답정리">
+            <span class="emo">🔍</span>오답
+          </button>
+          <button type="button" class="icon-choice" data-icon="☕" data-label="휴식">
+            <span class="emo">☕</span>휴식
+          </button>
+          <button type="button" class="icon-choice" data-icon="🍱" data-label="식사">
+            <span class="emo">🍱</span>식사
+          </button>
+          <button type="button" class="icon-choice" data-icon="⏱️" data-label="기타">
+            <span class="emo">⏱️</span>기타
+          </button>
+        </div>
+
+        <div class="lap-input-row">
+          <input type="text" id="lapNameInput" placeholder="구간 이름 입력 (예: 국어, 휴식)" />
+        </div>
+
+        <button type="button" class="btn-accent btn-lap-big" id="lapBtn">⏱ 구간 기록하기</button>
+      </div>
+
+      <div class="lap-list" id="lapList">
+        <div class="empty-msg">
+          아이콘과 구간 이름을 선택한 뒤<br />
+          <b>구간 기록하기</b> 버튼을 누르면<br />
+          <b>현재 디지털 시각</b>과 <b>구간 시간</b>이<br />
+          이곳에 기록됩니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("clockCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const appGrid = document.getElementById("appGrid");
+    const settingsCollapsible = document.getElementById("settingsCollapsible");
+    const toggleAllSettingsBtn = document.getElementById("toggleAllSettingsBtn");
+
+    const startTimeInput = document.getElementById("startTimeInput");
+    const endTimeInput = document.getElementById("endTimeInput");
+    const durMinInput = document.getElementById("durMin");
+    const durSecInput = document.getElementById("durSec");
+    const durationInputs = document.getElementById("durationInputs");
+    const exactInput = document.getElementById("exactInput");
+
+    const chkDigital = document.getElementById("chkDigital");
+    const chkCountdown = document.getElementById("chkCountdown");
+    const chkCountup = document.getElementById("chkCountup");
+    const chkSplit = document.getElementById("chkSplit");
+    const splitValInput = document.getElementById("splitVal");
+    const splitUnitSelect = document.getElementById("splitUnit");
+
+    const readoutsArea = document.getElementById("readoutsArea");
+    const boxDigital = document.getElementById("boxDigital");
+    const boxCountdown = document.getElementById("boxCountdown");
+    const boxCountup = document.getElementById("boxCountup");
+    const boxSplit = document.getElementById("boxSplit");
+
+    const lblCountdown = document.getElementById("lblCountdown");
+    const valDigital = document.getElementById("valDigital");
+    const valCountdown = document.getElementById("valCountdown");
+    const valCountup = document.getElementById("valCountup");
+    const valSplit = document.getElementById("valSplit");
+    const statusText = document.getElementById("statusText");
+
+    const ledBoard = document.getElementById("ledBoard");
+    const ledTagLabel = document.getElementById("ledTagLabel");
+    const ledViewport = document.getElementById("ledViewport");
+    const ledText = document.getElementById("ledText");
+
+    const alarmListEl = document.getElementById("alarmList");
+    const voiceSelect = document.getElementById("voiceSelect");
+    const ttsRateSelect = document.getElementById("ttsRate");
+    const ttsPitchSelect = document.getElementById("ttsPitch");
+    const lapList = document.getElementById("lapList");
+    const lapNameInput = document.getElementById("lapNameInput");
+    const toastMsg = document.getElementById("toastMsg");
+
+    const saveMenuBtn = document.getElementById("saveMenuBtn");
+    const saveMenu = document.getElementById("saveMenu");
+    const loadTxtBtn = document.getElementById("loadTxtBtn");
+    const txtFileInput = document.getElementById("txtFileInput");
+
+    const STORAGE_KEY = "analog_clock_lap_state_v1";
+    const FOCUS_MS = 50 * 60 * 1000;
+    const BREAK_MS = 10 * 60 * 1000;
+    const CYCLE_MS = FOCUS_MS + BREAK_MS;
+
+    const LAP_ICONS = [
+      { icon: "📖", label: "공부" },
+      { icon: "✍️", label: "문제풀이" },
+      { icon: "🔍", label: "오답정리" },
+      { icon: "☕", label: "휴식" },
+      { icon: "🍱", label: "식사" },
+      { icon: "⏱️", label: "기타" },
+    ];
+
+    const EXAM_PRESETS = {
+      gongmuwon9: {
+        title: "9급 공무원 (10:00~11:50 · 110분)",
+        start: "10:00:00",
+        min: 110,
+        sec: 0,
+        alarms: [
+          { triggerType: "before_end", offsetH: 0, offsetM: 10, offsetS: 0, actionType: "both", text: "" },
+          { triggerType: "before_end", offsetH: 0, offsetM: 5, offsetS: 0, actionType: "both", text: "" },
+          { triggerType: "before_end", offsetH: 0, offsetM: 0, offsetS: 0, actionType: "both", text: "시험이 종료되었습니다. 필기도구를 내려놓으세요." },
+        ],
+      },
+      gunmuwon9: {
+        title: "군무원 9급 (3과목 · 75분)",
+        start: "14:00:00",
+        min: 75,
+        sec: 0,
+        alarms: [
+          { triggerType: "before_end", offsetH: 0, offsetM: 10, offsetS: 0, actionType: "both", text: "" },
+          { triggerType: "before_end", offsetH: 0, offsetM: 5, offsetS: 0, actionType: "both", text: "" },
+          { triggerType: "before_end", offsetH: 0, offsetM: 0, offsetS: 0, actionType: "both", text: "군무원 필기시험이 종료되었습니다." },
+        ],
+      },
+      suneung_kor: {
+        title: "수능 1교시 국어 (80분)",
+        start: "08:40:00",
+        min: 80,
+        sec: 0,
+        alarms: [
+          { triggerType: "before_end", offsetH: 0, offsetM: 10, offsetS: 0, actionType: "both", text: "1교시 국어 영역 종료 10분 전입니다." },
+          { triggerType: "before_end", offsetH: 0, offsetM: 0, offsetS: 0, actionType: "both", text: "1교시 국어 영역이 종료되었습니다." },
+        ],
+      },
+      suneung_math: {
+        title: "수능 2교시 수학 (100분)",
+        start: "10:30:00",
+        min: 100,
+        sec: 0,
+        alarms: [
+          { triggerType: "before_end", offsetH: 0, offsetM: 10, offsetS: 0, actionType: "both", text: "2교시 수학 영역 종료 10분 전입니다." },
+          { triggerType: "before_end", offsetH: 0, offsetM: 0, offsetS: 0, actionType: "both", text: "2교시 수학 영역이 종료되었습니다." },
+        ],
+      },
+      suneung_eng: {
+        title: "수능 3교시 영어 (70분)",
+        start: "13:10:00",
+        min: 70,
+        sec: 0,
+        alarms: [
+          { triggerType: "before_end", offsetH: 0, offsetM: 10, offsetS: 0, actionType: "both", text: "3교시 영어 영역 종료 10분 전입니다." },
+          { triggerType: "before_end", offsetH: 0, offsetM: 0, offsetS: 0, actionType: "both", text: "3교시 영어 영역이 종료되었습니다." },
+        ],
+      },
+      focus_loop: {
+        title: "집중 모드 (50분 집중 / 10분 휴식 무한 반복)",
+        start: null,
+        min: 50,
+        sec: 0,
+        alarms: [],
+      },
+    };
+
+    let selectedLapIcon = "📖";
+    let selectedLapDefaultLabel = "공부";
+    let lapRecords = [];
+
+    let isFocusLoopMode = false;
+    let lastFocusPhase = null;
+
+    let rafId = null;
+    let running = false;
+    let startSimMs = 0;
+    let endSimMs = 0;
+    let perfOrigin = 0;
+    let currentElapsedMs = 0;
+    let lastLapElapsedMs = 0;
+    let lapCount = 0;
+    let scheduledAlarms = [];
+    let audioCtx = null;
+
+    function saveLapState() {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            lapRecords,
+            lastLapElapsedMs,
+            lapCount,
+          })
+        );
+      } catch (e) {}
+    }
+
+    function loadLapState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed.lapRecords)) return false;
+        lapRecords = parsed.lapRecords;
+        lastLapElapsedMs = Number(parsed.lastLapElapsedMs) || 0;
+        lapCount = Number(parsed.lapCount) || lapRecords.length;
+        return lapRecords.length > 0;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function showToast(msg) {
+      toastMsg.textContent = msg;
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        toastMsg.textContent = "";
+      }, 2500);
+    }
+
+    saveMenuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      saveMenu.classList.toggle("open");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!saveMenu.contains(e.target) && e.target !== saveMenuBtn) {
+        saveMenu.classList.remove("open");
+      }
+    });
+
+    toggleAllSettingsBtn.addEventListener("click", () => {
+      const isCollapsed = settingsCollapsible.classList.toggle("collapsed");
+      appGrid.classList.toggle("panel-collapsed", isCollapsed);
+      toggleAllSettingsBtn.textContent = isCollapsed ? "설정 펼치기" : "설정 접기";
+    });
+
+    document.querySelectorAll(".acc-header").forEach((header) => {
+      header.addEventListener("click", () => {
+        header.parentElement.classList.toggle("collapsed");
+      });
+    });
+
+    function getNowSecondsOfDay() {
+      const now = new Date();
+      return (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) * 1000;
+    }
+
+    function formatHMS(ms) {
+      const totalSec = Math.floor(Math.max(0, ms) / 1000) % 86400;
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function formatHHMMSSMS(ms) {
+      const clamped = Math.max(0, Math.floor(ms));
+      const mmm = clamped % 1000;
+      const totalSec = Math.floor(clamped / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return (
+        `${String(h).padStart(2, "0")}:` +
+        `${String(m).padStart(2, "0")}:` +
+        `${String(s).padStart(2, "0")}:` +
+        `${String(mmm).padStart(3, "0")}`
+      );
+    }
+
+    function parseDurationToMs(str) {
+      const clean = (str || "").replace(/^\+/, "").trim();
+      const parts = clean.split(":").map(Number);
+      if (parts.length !== 4 || parts.some(isNaN)) return null;
+      const [h, m, s, ms] = parts;
+      return (((h * 3600 + m * 60 + s) * 1000) + ms);
+    }
+
+    function parseHMS(str) {
+      const parts = str.trim().split(":").map(Number);
+      if (parts.length < 2 || parts.length > 3 || parts.some(isNaN)) return null;
+      const [h, m, s = 0] = parts;
+      if (h < 0 || h > 23 || m < 0 || m > 59 || s < 0 || s > 59) return null;
+      return ((h * 3600) + (m * 60) + s) * 1000;
+    }
+
+    function updateLedDisplay(tag, message, state = "standby") {
+      ledBoard.classList.remove("active", "finish");
+      if (state === "active") ledBoard.classList.add("active");
+      if (state === "finish") ledBoard.classList.add("finish");
+
+      ledTagLabel.textContent = tag;
+      ledText.textContent = message;
+
+      ledViewport.classList.remove("scrolling");
+      requestAnimationFrame(() => {
+        if (ledText.scrollWidth > ledViewport.clientWidth) {
+          ledViewport.classList.add("scrolling");
+        }
+      });
+    }
+
+    function findSunhiVoice(voices) {
+      return voices.find((v) => {
+        const nameLower = (v.name || "").toLowerCase();
+        return nameLower.includes("sunhi") || (v.name || "").includes("선히");
+      });
+    }
+
+    function loadKoreanVoices() {
+      if (!("speechSynthesis" in window)) return;
+      const allVoices = speechSynthesis.getVoices();
+      const koVoices = allVoices.filter((v) => v.lang.toLowerCase().includes("ko"));
+      const otherVoices = allVoices.filter((v) => !v.lang.toLowerCase().includes("ko"));
+
+      const prevSelected = voiceSelect.value;
+      voiceSelect.innerHTML = "";
+
+      const sunhiVoice = findSunhiVoice(allVoices);
+
+      if (koVoices.length > 0) {
+        const koGroup = document.createElement("optgroup");
+        koGroup.label = "한국어 음성";
+        koVoices.forEach((v) => {
+          const opt = document.createElement("option");
+          opt.value = v.name;
+          opt.textContent = v.name.replace("Microsoft ", "").replace(" Online (Natural)", " (Natural)");
+          koGroup.appendChild(opt);
+        });
+        voiceSelect.appendChild(koGroup);
+      }
+
+      if (otherVoices.length > 0) {
+        const etcGroup = document.createElement("optgroup");
+        etcGroup.label = "기타 언어 음성";
+        otherVoices.forEach((v) => {
+          const opt = document.createElement("option");
+          opt.value = v.name;
+          opt.textContent = `${v.name} (${v.lang})`;
+          etcGroup.appendChild(opt);
+        });
+        voiceSelect.appendChild(etcGroup);
+      }
+
+      if (prevSelected && [...voiceSelect.options].some((o) => o.value === prevSelected)) {
+        voiceSelect.value = prevSelected;
+      } else if (sunhiVoice) {
+        voiceSelect.value = sunhiVoice.name;
+      } else if (koVoices.length > 0) {
+        voiceSelect.value = koVoices[0].name;
+      }
+    }
+
+    loadKoreanVoices();
+    if (typeof speechSynthesis !== "undefined" && speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadKoreanVoices;
+    }
+
+    function playChimeSound(type = "chime", onEnded = null) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        const notes = type === "finish"
+          ? [523.25, 659.25, 783.99, 1046.5]
+          : [659.25, 880.0];
+
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.18);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.18);
+          gain.gain.exponentialRampToValueAtTime(0.25, now + idx * 0.18 + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.18 + 0.45);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.18);
+          osc.stop(now + idx * 0.18 + 0.48);
+        });
+
+        const totalDurMs = notes.length * 180 + 320;
+        if (onEnded) {
+          setTimeout(onEnded, totalDurMs);
+        }
+      } catch (e) {
+        if (onEnded) onEnded();
+      }
+    }
+
+    function speakText(text) {
+      if (!text || !("speechSynthesis" in window)) return;
+      if (voiceSelect.options.length === 0) {
+        loadKoreanVoices();
+      }
+      speechSynthesis.cancel();
+      // 화면의 '|' 구분자는 음성에서 자연스럽게 읽히도록 공백으로 치환
+      const cleanSpoken = text.replace(/\s*\|\s*/g, " ");
+      const utter = new SpeechSynthesisUtterance(cleanSpoken);
+      utter.lang = "ko-KR";
+      utter.rate = parseFloat(ttsRateSelect.value) || 1.3;
+      utter.pitch = parseFloat(ttsPitchSelect.value) || 1.0;
+
+      const voices = speechSynthesis.getVoices();
+      const selectedName = voiceSelect.value;
+      let chosenVoice = voices.find((v) => v.name === selectedName);
+
+      if (!chosenVoice) {
+        chosenVoice = findSunhiVoice(voices) || voices.find((v) => v.lang.toLowerCase().includes("ko"));
+        if (chosenVoice && voiceSelect) {
+          voiceSelect.value = chosenVoice.name;
+        }
+      }
+
+      if (chosenVoice) {
+        utter.voice = chosenVoice;
+        utter.lang = chosenVoice.lang;
+      }
+
+      speechSynthesis.speak(utter);
+    }
+
+    // 중복 없이 1번만 말하도록 문구 생성
+    function formatRelativeAlarmPhrase(h, m, s, mode) {
+      const parts = [];
+      if (h > 0) parts.push(`${h}시간`);
+      if (m > 0) parts.push(`${m}분`);
+      if (s > 0) parts.push(`${s}초`);
+
+      if (parts.length === 0) {
+        return mode === "before_end" ? "종료 시간 입니다." : "시작 시간 입니다.";
+      }
+
+      const prefix = mode === "before_end" ? "종료" : "시작";
+      const suffix = mode === "before_end" ? "전" : "후";
+      return `${prefix} ${parts.join(" ")} ${suffix} 입니다.`;
+    }
+
+    function buildSpokenMessage(digitalTimeStr, customText, fallbackPhrase) {
+      const body = customText && customText.trim() ? customText.trim() : fallbackPhrase;
+      return `${digitalTimeStr} | ${body}`;
+    }
+
+    function triggerNotification(actionType, spokenMessage, isFinish = false) {
+      if (actionType === "both") {
+        playChimeSound(isFinish ? "finish" : "chime", () => speakText(spokenMessage));
+      } else if (actionType === "tts") {
+        speakText(spokenMessage);
+      } else if (actionType === "beep") {
+        playChimeSound(isFinish ? "finish" : "chime");
+      }
+    }
+
+    function getCardFallbackPhrase(card, sMs, eMs) {
+      const totalDur = eMs - sMs;
+      const triggerType = card.querySelector(".al-trigger").value;
+      if (triggerType === "before_end" || triggerType === "after_start") {
+        const h = Math.max(0, Number(card.querySelector(".al-off-h")?.value) || 0);
+        const m = Math.max(0, Number(card.querySelector(".al-off-m")?.value) || 0);
+        const s = Math.max(0, Number(card.querySelector(".al-off-s")?.value) || 0);
+        return formatRelativeAlarmPhrase(h, m, s, triggerType);
+      }
+      const exactStr = card.querySelector(".al-exact")?.value?.trim() || "";
+      if (totalDur > 0 && exactStr) {
+        const exactMs = parseHMS(exactStr);
+        if (exactMs !== null) {
+          const adjExact = exactMs < sMs ? exactMs + 86400 * 1000 : exactMs;
+          const diffSec = Math.round((eMs - adjExact) / 1000);
+          if (diffSec >= 0) {
+            const dh = Math.floor(diffSec / 3600);
+            const dm = Math.floor((diffSec % 3600) / 60);
+            const ds = diffSec % 60;
+            return formatRelativeAlarmPhrase(dh, dm, ds, "before_end");
+          }
+        }
+      }
+      return "알림 시간 입니다.";
+    }
+
+    document.getElementById("testVoiceBtn").addEventListener("click", () => {
+      const nowStr = formatHMS(getNowSecondsOfDay());
+      const sample = `${nowStr} | 선희 음성 빠른 속도 테스트 입니다.`;
+      updateLedDisplay("TEST", sample, "active");
+      speakText(sample);
+    });
+
+    function addAlarmCard({
+      triggerType = "before_end",
+      offsetH = 0,
+      offsetM = 10,
+      offsetS = 0,
+      exactTime = "15:50:00",
+      actionType = "both",
+      text = "",
+    } = {}) {
+      const card = document.createElement("div");
+      card.className = "alarm-card";
+      card.innerHTML = `
+        <div class="alarm-top-row">
+          <select class="al-trigger">
+            <option value="before_end" ${triggerType === "before_end" ? "selected" : ""}>종료 기준 전</option>
+            <option value="after_start" ${triggerType === "after_start" ? "selected" : ""}>시작 기준 후</option>
+            <option value="exact" ${triggerType === "exact" ? "selected" : ""}>정확한 시각</option>
+          </select>
+          <div class="al-time-slot"></div>
+          <button type="button" class="btn-icon btn-del" title="알림 삭제">✕</button>
+        </div>
+        <div class="alarm-bottom-row">
+          <select class="al-action">
+            <option value="both" ${actionType === "both" ? "selected" : ""}>알람 + TTS</option>
+            <option value="tts" ${actionType === "tts" ? "selected" : ""}>TTS만 읽기</option>
+            <option value="beep" ${actionType === "beep" ? "selected" : ""}>알람음만</option>
+          </select>
+          <input type="text" class="al-text" value="${text}" placeholder="비워두면 종료 N분 전/후 자동 안내" />
+          <button type="button" class="btn-icon btn-play" title="미리듣기">▶</button>
+        </div>
+      `;
+
+      const triggerSel = card.querySelector(".al-trigger");
+      const timeSlot = card.querySelector(".al-time-slot");
+      const actionSel = card.querySelector(".al-action");
+      const textInp = card.querySelector(".al-text");
+
+      function renderTimeSlot() {
+        const mode = triggerSel.value;
+        if (mode === "before_end" || mode === "after_start") {
+          const suffix = mode === "before_end" ? "전" : "후";
+          timeSlot.innerHTML = `
+            <div class="hms-offset-box">
+              <input type="number" class="al-off-h" value="${offsetH}" min="0" max="23" /><span>시</span>
+              <input type="number" class="al-off-m" value="${offsetM}" min="0" max="59" /><span>분</span>
+              <input type="number" class="al-off-s" value="${offsetS}" min="0" max="59" /><span>초 ${suffix}</span>
+            </div>
+          `;
+        } else {
+          timeSlot.innerHTML = `
+            <input type="text" class="al-exact" value="${exactTime}" placeholder="HH:MM:SS" />
+          `;
+        }
+      }
+
+      renderTimeSlot();
+      triggerSel.addEventListener("change", renderTimeSlot);
+      card.querySelector(".btn-del").addEventListener("click", () => card.remove());
+      card.querySelector(".btn-play").addEventListener("click", () => {
+        const range = computeTimeRange();
+        const sMs = range ? range.sMs : getNowSecondsOfDay();
+        const eMs = range ? range.eMs : sMs + 110 * 60 * 1000;
+        const currentDig = running
+          ? formatHMS(startSimMs + Math.max(0, performance.now() - perfOrigin))
+          : formatHMS(sMs);
+        const fallback = getCardFallbackPhrase(card, sMs, eMs);
+        const spoken = buildSpokenMessage(currentDig, textInp.value, fallback);
+        updateLedDisplay("PREVIEW", spoken, "active");
+        triggerNotification(actionSel.value, spoken, false);
+      });
+
+      alarmListEl.appendChild(card);
+    }
+
+    function applyPreset(presetKey) {
+      const preset = EXAM_PRESETS[presetKey];
+      if (!preset) return;
+
+      document.querySelectorAll(".preset-btn").forEach((b) => b.classList.remove("active-mode"));
+      const targetBtn = document.querySelector(`.preset-btn[data-preset="${presetKey}"]`);
+      if (targetBtn) targetBtn.classList.add("active-mode");
+
+      isFocusLoopMode = presetKey === "focus_loop";
+
+      document.querySelector('input[name="endMode"][value="duration"]').checked = true;
+      durationInputs.style.display = "grid";
+      exactInput.style.display = "none";
+
+      startTimeInput.value = preset.start || formatHMS(getNowSecondsOfDay());
+      durMinInput.value = preset.min;
+      durSecInput.value = preset.sec;
+
+      alarmListEl.innerHTML = "";
+      preset.alarms.forEach((al) => addAlarmCard(al));
+
+      resetClock();
+      updateLedDisplay("PRESET", `${preset.title} 세팅 완료`, "standby");
+    }
+
+    document.querySelectorAll(".preset-btn").forEach((btn) => {
+      btn.addEventListener("click", () => applyPreset(btn.dataset.preset));
+    });
+
+    document.getElementById("addAlarmBtn").addEventListener("click", () => {
+      addAlarmCard({
+        triggerType: "before_end",
+        offsetH: 0,
+        offsetM: 1,
+        offsetS: 0,
+        actionType: "both",
+        text: "",
+      });
+    });
+
+    function getSelectedEndMode() {
+      return document.querySelector('input[name="endMode"]:checked').value;
+    }
+
+    function computeTimeRange() {
+      const sMs = parseHMS(startTimeInput.value);
+      if (sMs === null) return null;
+
+      if (isFocusLoopMode) {
+        return { sMs, eMs: Infinity };
+      }
+
+      let eMs;
+      if (getSelectedEndMode() === "duration") {
+        const mins = Math.max(0, Number(durMinInput.value) || 0);
+        const secs = Math.max(0, Number(durSecInput.value) || 0);
+        const durMs = (mins * 60 + secs) * 1000;
+        if (durMs <= 0) return null;
+        eMs = sMs + durMs;
+      } else {
+        const parsedEnd = parseHMS(endTimeInput.value);
+        if (parsedEnd === null) return null;
+        eMs = parsedEnd <= sMs ? parsedEnd + 86400 * 1000 : parsedEnd;
+      }
+
+      return { sMs, eMs };
+    }
+
+    function buildScheduledAlarms(sMs, eMs) {
+      if (isFocusLoopMode || !Number.isFinite(eMs)) return [];
+      const list = [];
+      const totalDur = eMs - sMs;
+
+      document.querySelectorAll(".alarm-card").forEach((card) => {
+        card.classList.remove("triggered");
+        const triggerType = card.querySelector(".al-trigger").value;
+        const actionType = card.querySelector(".al-action").value;
+        const customText = card.querySelector(".al-text").value.trim();
+
+        let targetElapsed = null;
+        let fallbackPhrase = "";
+
+        if (triggerType === "before_end" || triggerType === "after_start") {
+          const h = Math.max(0, Number(card.querySelector(".al-off-h")?.value) || 0);
+          const m = Math.max(0, Number(card.querySelector(".al-off-m")?.value) || 0);
+          const s = Math.max(0, Number(card.querySelector(".al-off-s")?.value) || 0);
+          const offsetMs = (h * 3600 + m * 60 + s) * 1000;
+
+          if (triggerType === "before_end") {
+            targetElapsed = totalDur - offsetMs;
+          } else {
+            targetElapsed = offsetMs;
+          }
+          fallbackPhrase = formatRelativeAlarmPhrase(h, m, s, triggerType);
+        } else if (triggerType === "exact") {
+          const exactStr = card.querySelector(".al-exact")?.value || "";
+          let exactMs = parseHMS(exactStr);
+          if (exactMs !== null) {
+            if (exactMs < sMs) exactMs += 86400 * 1000;
+            targetElapsed = exactMs - sMs;
+            fallbackPhrase = getCardFallbackPhrase(card, sMs, eMs);
+          }
+        }
+
+        if (targetElapsed !== null && targetElapsed >= 0 && targetElapsed <= totalDur) {
+          list.push({
+            card,
+            targetElapsed,
+            actionType,
+            customText,
+            fallbackPhrase,
+            isFinish: Math.abs(targetElapsed - totalDur) < 500,
+            fired: false,
+          });
+        }
+      });
+
+      return list;
+    }
+
+    function getSplitIntervalMs() {
+      const val = Math.max(1, Number(splitValInput.value) || 1);
+      const unitSec = Number(splitUnitSelect.value) || 60;
+      return val * unitSec * 1000;
+    }
+
+    function syncVisibility() {
+      boxDigital.style.display = chkDigital.checked ? "" : "none";
+      boxCountdown.style.display = chkCountdown.checked ? "" : "none";
+      boxCountup.style.display = chkCountup.checked ? "" : "none";
+      boxSplit.style.display = chkSplit.checked ? "" : "none";
+
+      const anyVisible =
+        chkDigital.checked || chkCountdown.checked || chkCountup.checked || chkSplit.checked;
+      readoutsArea.style.display = anyVisible ? "grid" : "none";
+    }
+
+    function drawAnalogClock(simMs, isFinished) {
+      const W = canvas.width;
+      const H = canvas.height;
+      const cx = W / 2;
+      const cy = H / 2;
+      const r = 315;
+
+      ctx.clearRect(0, 0, W, H);
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = isFinished ? "#dc2626" : "#1e293b";
+      ctx.stroke();
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      for (let i = 0; i < 60; i++) {
+        const angle = (i * 6 - 90) * (Math.PI / 180);
+        const isHour = i % 5 === 0;
+        const innerR = r - (isHour ? 28 : 12);
+        const outerR = r - 6;
+
+        ctx.beginPath();
+        ctx.moveTo(cx + innerR * Math.cos(angle), cy + innerR * Math.sin(angle));
+        ctx.lineTo(cx + outerR * Math.cos(angle), cy + outerR * Math.sin(angle));
+        ctx.lineWidth = isHour ? 5 : 2;
+        ctx.strokeStyle = isHour ? "#0f172a" : "#94a3b8";
+        ctx.stroke();
+
+        if (isHour) {
+          const num = i === 0 ? 12 : i / 5;
+          const numR = r - 64;
+          ctx.font = "bold 34px 'Malgun Gothic', sans-serif";
+          ctx.fillStyle = "#0f172a";
+          ctx.fillText(String(num), cx + numR * Math.cos(angle), cy + numR * Math.sin(angle));
+        }
+      }
+
+      const daySec = ((simMs / 1000) % 86400 + 86400) % 86400;
+      const sec = daySec % 60;
+      const min = (daySec / 60) % 60;
+      const hour = (daySec / 3600) % 12;
+
+      const hAngle = (hour * 30 - 90) * (Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(cx - 18 * Math.cos(hAngle), cy - 18 * Math.sin(hAngle));
+      ctx.lineTo(cx + r * 0.50 * Math.cos(hAngle), cy + r * 0.50 * Math.sin(hAngle));
+      ctx.lineWidth = 10;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#0f172a";
+      ctx.stroke();
+
+      const mAngle = (min * 6 - 90) * (Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(cx - 22 * Math.cos(mAngle), cy - 22 * Math.sin(mAngle));
+      ctx.lineTo(cx + r * 0.73 * Math.cos(mAngle), cy + r * 0.73 * Math.sin(mAngle));
+      ctx.lineWidth = 6.5;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#334155";
+      ctx.stroke();
+
+      const sAngle = (sec * 6 - 90) * (Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(cx - 28 * Math.cos(sAngle), cy - 28 * Math.sin(sAngle));
+      ctx.lineTo(cx + r * 0.84 * Math.cos(sAngle), cy + r * 0.84 * Math.sin(sAngle));
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#dc2626";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 11, 0, Math.PI * 2);
+      ctx.fillStyle = "#dc2626";
+      ctx.fill();
+    }
+
+    function handleFocusLoopAlerts(elapsedMs, digStr) {
+      const cycleIndex = Math.floor(elapsedMs / CYCLE_MS) + 1;
+      const posInCycle = elapsedMs % CYCLE_MS;
+      const isFocus = posInCycle < FOCUS_MS;
+      const phase = isFocus ? "focus" : "break";
+
+      if (phase !== lastFocusPhase) {
+        if (lastFocusPhase !== null) {
+          if (phase === "break") {
+            const msg = `${digStr} | ${cycleIndex}회차 50분 집중 완료. 10분 휴식 시작 합니다.`;
+            updateLedDisplay("50M DONE", msg, "active");
+            triggerNotification("both", msg, false);
+          } else {
+            const prevCycle = cycleIndex - 1;
+            const msg = `${digStr} | ${prevCycle}회차 10분 휴식 완료. ${cycleIndex}회차 50분 집중 시작 합니다.`;
+            updateLedDisplay("10M DONE", msg, "active");
+            triggerNotification("both", msg, false);
+          }
+        }
+        lastFocusPhase = phase;
+      }
+    }
+
+    function updateReadouts(elapsedMs, totalDurationMs) {
+      const currentSimMs = startSimMs + elapsedMs;
+
+      if (isFocusLoopMode || !Number.isFinite(totalDurationMs)) {
+        const cycleIndex = Math.floor(elapsedMs / CYCLE_MS) + 1;
+        const posInCycle = elapsedMs % CYCLE_MS;
+        const isFocus = posInCycle < FOCUS_MS;
+        const phaseRemMs = isFocus ? FOCUS_MS - posInCycle : CYCLE_MS - posInCycle;
+
+        drawAnalogClock(currentSimMs, false);
+
+        if (chkDigital.checked) {
+          valDigital.textContent = formatHMS(currentSimMs);
+        }
+
+        if (chkCountdown.checked) {
+          lblCountdown.textContent = isFocus
+            ? `${cycleIndex}회차 집중 (50분)`
+            : `${cycleIndex}회차 휴식 (10분)`;
+          valCountdown.textContent = formatHHMMSSMS(phaseRemMs);
+          valCountdown.classList.toggle("danger", !isFocus);
+        }
+
+        if (chkCountup.checked) {
+          valCountup.textContent = formatHHMMSSMS(elapsedMs);
+        }
+
+        if (chkSplit.checked) {
+          const intervalMs = getSplitIntervalMs();
+          valSplit.textContent = formatHHMMSSMS(elapsedMs % intervalMs);
+        }
+        return;
+      }
+
+      lblCountdown.textContent = "Count Down (남은 시간)";
+      const clampedElapsed = Math.min(elapsedMs, totalDurationMs);
+      const isFinished = elapsedMs >= totalDurationMs;
+      const remMs = Math.max(0, totalDurationMs - clampedElapsed);
+
+      drawAnalogClock(currentSimMs, isFinished);
+
+      if (chkDigital.checked) {
+        valDigital.textContent = formatHMS(currentSimMs);
+      }
+
+      if (chkCountdown.checked) {
+        valCountdown.textContent = formatHHMMSSMS(remMs);
+        valCountdown.classList.toggle("danger", isFinished);
+      }
+
+      if (chkCountup.checked) {
+        valCountup.textContent = formatHHMMSSMS(clampedElapsed);
+      }
+
+      if (chkSplit.checked) {
+        const intervalMs = getSplitIntervalMs();
+        const splitElapsed = clampedElapsed % intervalMs;
+        valSplit.textContent = formatHHMMSSMS(splitElapsed);
+      }
+    }
+
+    function renderLoop(now) {
+      if (!running) return;
+      const totalDurationMs = endSimMs - startSimMs;
+      currentElapsedMs = Math.max(0, now - perfOrigin);
+      const currentDigStr = formatHMS(
+        startSimMs + (Number.isFinite(totalDurationMs) ? Math.min(currentElapsedMs, totalDurationMs) : currentElapsedMs)
+      );
+
+      if (isFocusLoopMode || !Number.isFinite(totalDurationMs)) {
+        handleFocusLoopAlerts(currentElapsedMs, currentDigStr);
+        updateReadouts(currentElapsedMs, Infinity);
+        rafId = requestAnimationFrame(renderLoop);
+        return;
+      }
+
+      for (const item of scheduledAlarms) {
+        if (!item.fired && currentElapsedMs >= item.targetElapsed) {
+          item.fired = true;
+          item.card.classList.add("triggered");
+          const spokenMessage = buildSpokenMessage(
+            currentDigStr,
+            item.customText,
+            item.fallbackPhrase
+          );
+          triggerNotification(item.actionType, spokenMessage, item.isFinish);
+          updateLedDisplay(
+            item.isFinish ? "FINISH" : "NOTICE",
+            spokenMessage,
+            item.isFinish ? "finish" : "active"
+          );
+        }
+      }
+
+      updateReadouts(currentElapsedMs, totalDurationMs);
+
+      if (currentElapsedMs >= totalDurationMs) {
+        running = false;
+        currentElapsedMs = totalDurationMs;
+        statusText.textContent = "종료 완료";
+        if (!ledBoard.classList.contains("finish")) {
+          const endDigStr = formatHMS(endSimMs);
+          updateLedDisplay("FINISH", `${endDigStr} | 종료 시간 입니다.`, "finish");
+        }
+        return;
+      }
+
+      rafId = requestAnimationFrame(renderLoop);
+    }
+
+    function startClock() {
+      if (isFocusLoopMode) {
+        startTimeInput.value = formatHMS(getNowSecondsOfDay());
+      }
+
+      const range = computeTimeRange();
+      if (!range) {
+        alert("시작 시간과 종료 시간(또는 시험 시간)을 올바르게 입력해 주세요.");
+        return;
+      }
+
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+
+      if (rafId) cancelAnimationFrame(rafId);
+
+      startSimMs = range.sMs;
+      endSimMs = range.eMs;
+      scheduledAlarms = buildScheduledAlarms(startSimMs, endSimMs);
+      currentElapsedMs = 0;
+      lastFocusPhase = null;
+      perfOrigin = performance.now();
+      running = true;
+
+      if (isFocusLoopMode) {
+        statusText.textContent = `집중 모드 50분/10분 반복 중 (${formatHMS(startSimMs)} 시작)`;
+        updateLedDisplay(
+          "FOCUS 1",
+          `${formatHMS(startSimMs)} | 1회차 50분 집중 시작 (50분·10분마다 알림)`,
+          "active"
+        );
+      } else {
+        statusText.textContent = `진행 중 (${formatHMS(startSimMs)} ~ ${formatHMS(endSimMs)})`;
+        updateLedDisplay(
+          "ON AIR",
+          `진행 중 · 예약된 알림 ${scheduledAlarms.length}개 대기 중`,
+          "standby"
+        );
+      }
+
+      rafId = requestAnimationFrame(renderLoop);
+    }
+
+    function resetClock() {
+      if (rafId) cancelAnimationFrame(rafId);
+      running = false;
+      currentElapsedMs = 0;
+      lastFocusPhase = null;
+      if ("speechSynthesis" in window) speechSynthesis.cancel();
+
+      document.querySelectorAll(".alarm-card").forEach((c) => c.classList.remove("triggered"));
+
+      const range = computeTimeRange();
+      if (range) {
+        startSimMs = range.sMs;
+        endSimMs = range.eMs;
+        updateReadouts(0, endSimMs - startSimMs);
+      } else {
+        drawAnalogClock(getNowSecondsOfDay(), false);
+        valDigital.textContent = "--:--:--";
+        valCountdown.textContent = "00:00:00:000";
+        valCountup.textContent = "00:00:00:000";
+        valSplit.textContent = "00:00:00:000";
+      }
+      statusText.textContent = "대기 중";
+      updateLedDisplay("STANDBY", "알림 대기 중", "standby");
+    }
+
+    document.querySelectorAll(".icon-choice").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".icon-choice").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        selectedLapIcon = btn.dataset.icon;
+        selectedLapDefaultLabel = btn.dataset.label;
+      });
+    });
+
+    function renderLapList() {
+      if (lapRecords.length === 0) {
+        lapList.innerHTML = `
+          <div class="empty-msg">
+            아이콘과 구간 이름을 선택한 뒤<br />
+            <b>구간 기록하기</b> 버튼을 누르면<br />
+            <b>현재 디지털 시각</b>과 <b>구간 시간</b>이<br />
+            이곳에 기록됩니다.
+          </div>
+        `;
+        return;
+      }
+
+      lapList.innerHTML = "";
+      [...lapRecords].reverse().forEach((rec) => {
+        const iconOptionsHtml = LAP_ICONS.map(
+          (item) =>
+            `<option value="${item.icon}" ${item.icon === rec.icon ? "selected" : ""}>${item.icon} ${item.label}</option>`
+        ).join("");
+
+        const item = document.createElement("div");
+        item.className = "lap-item";
+        item.innerHTML = `
+          <div class="lap-top">
+            <select class="lap-icon-select" title="활동 아이콘 변경">
+              ${iconOptionsHtml}
+            </select>
+            <input type="text" class="lap-name-input" value="${rec.name}" title="클릭하여 구간 이름 수정" />
+            <button type="button" class="lap-del-btn" title="기록 삭제">✕</button>
+          </div>
+          <div class="lap-bottom">
+            <span class="lap-digital">🕒 ${rec.digitalTime}</span>
+            <span class="lap-time">+${rec.segmentStr}</span>
+          </div>
+        `;
+
+        item.querySelector(".lap-icon-select").addEventListener("change", (e) => {
+          rec.icon = e.target.value;
+          saveLapState();
+        });
+
+        item.querySelector(".lap-name-input").addEventListener("input", (e) => {
+          rec.name = e.target.value;
+          saveLapState();
+        });
+
+        item.querySelector(".lap-del-btn").addEventListener("click", () => {
+          lapRecords = lapRecords.filter((r) => r.id !== rec.id);
+          renderLapList();
+          saveLapState();
+        });
+
+        lapList.appendChild(item);
+      });
+    }
+
+    function recordLap() {
+      lapCount += 1;
+      const totalDur = endSimMs - startSimMs;
+      const rawElapsed = running ? Math.max(0, performance.now() - perfOrigin) : currentElapsedMs;
+      const nowElapsed = Number.isFinite(totalDur) ? Math.min(rawElapsed, totalDur) : rawElapsed;
+
+      const segmentMs = Math.max(0, nowElapsed - lastLapElapsedMs);
+      lastLapElapsedMs = nowElapsed;
+
+      const currentDigitalStr = chkDigital.checked
+        ? valDigital.textContent
+        : formatHMS(startSimMs + nowElapsed);
+
+      const customTitle = lapNameInput.value.trim() || `${selectedLapDefaultLabel} #${lapCount}`;
+      lapNameInput.value = "";
+
+      lapRecords.push({
+        id: Date.now() + "_" + lapCount,
+        order: lapCount,
+        icon: selectedLapIcon,
+        name: customTitle,
+        digitalTime: currentDigitalStr,
+        segmentStr: formatHHMMSSMS(segmentMs),
+      });
+
+      renderLapList();
+      saveLapState();
+    }
+
+    loadTxtBtn.addEventListener("click", () => {
+      saveMenu.classList.remove("open");
+      txtFileInput.value = "";
+      txtFileInput.click();
+    });
+
+    txtFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      try {
+        const content = await file.text();
+        const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        const lineRegex = /^\d+\.\s*(\S+)\s+(.+?)\s*\|\s*시각\s*(\d{2}:\d{2}:\d{2})\s*\|\s*구간\s*\+?(\d{2}:\d{2}:\d{2}:\d{3})$/;
+
+        const loaded = [];
+        let totalImportedMs = 0;
+
+        for (const line of lines) {
+          const match = line.match(lineRegex);
+          if (match) {
+            const [, icon, name, digitalTime, segmentStr] = match;
+            const segMs = parseDurationToMs(segmentStr) || 0;
+            totalImportedMs += segMs;
+            lapCount += 1;
+            loaded.push({
+              id: Date.now() + "_imp_" + lapCount + "_" + Math.random().toString(36).slice(2, 6),
+              order: lapCount,
+              icon,
+              name: name.trim(),
+              digitalTime,
+              segmentStr,
+            });
+          }
+        }
+
+        if (loaded.length === 0) {
+          showToast("불러올 수 있는 구간 기록 형식이 없습니다.");
+          return;
+        }
+
+        lapRecords = lapRecords.concat(loaded);
+        lastLapElapsedMs += totalImportedMs;
+        renderLapList();
+        saveLapState();
+        showToast(`${loaded.length}개 구간 기록을 불러왔습니다. 이어서 기록할 수 있습니다.`);
+      } catch (err) {
+        showToast("TXT 파일을 읽는 중 오류가 발생했습니다.");
+      }
+    });
+
+    function buildSummaryText() {
+      if (lapRecords.length === 0) return "";
+      const today = new Date().toLocaleDateString("ko-KR");
+      const rangeInfo = isFocusLoopMode
+        ? `시작 ${formatHMS(startSimMs)} · 집중 모드(50분 집중/10분 휴식 무한 반복)`
+        : `시작 ${formatHMS(startSimMs)} ~ 종료 ${formatHMS(endSimMs)}`;
+
+      const lines = [
+        `[구간 기록 · ${today}]`,
+        rangeInfo,
+        "----------------------------------------",
+      ];
+      lapRecords.forEach((rec, idx) => {
+        lines.push(
+          `${idx + 1}. ${rec.icon} ${rec.name} | 시각 ${rec.digitalTime} | 구간 +${rec.segmentStr}`
+        );
+      });
+      return lines.join("\n");
+    }
+
+    document.getElementById("copyTextBtn").addEventListener("click", async () => {
+      saveMenu.classList.remove("open");
+      const txt = buildSummaryText();
+      if (!txt) {
+        showToast("복사할 구간 기록이 없습니다.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(txt);
+        showToast("구간 기록 텍스트가 복사되었습니다.");
+      } catch (e) {
+        showToast("클립보드 권한을 확인해 주세요.");
+      }
+    });
+
+    document.getElementById("saveTxtBtn").addEventListener("click", () => {
+      saveMenu.classList.remove("open");
+      const txt = buildSummaryText();
+      if (!txt) {
+        showToast("저장할 구간 기록이 없습니다.");
+        return;
+      }
+      const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      a.href = url;
+      a.download = `구간기록_${stamp}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("TXT 파일로 저장되었습니다.");
+    });
+
+    function createLapReportCanvas() {
+      if (lapRecords.length === 0) return null;
+
+      const width = 760;
+      const rowHeight = 68;
+      const headerHeight = 128;
+      const footerHeight = 48;
+      const height = headerHeight + lapRecords.length * rowHeight + footerHeight;
+
+      const off = document.createElement("canvas");
+      off.width = width;
+      off.height = height;
+      const octx = off.getContext("2d");
+
+      octx.fillStyle = "#f8fafc";
+      octx.fillRect(0, 0, width, height);
+
+      octx.fillStyle = "#0f172a";
+      octx.fillRect(0, 0, width, headerHeight);
+
+      octx.fillStyle = "#38bdf8";
+      octx.font = "bold 14px 'Malgun Gothic', sans-serif";
+      octx.fillText("STUDY & EXAM LAP REPORT", 32, 36);
+
+      octx.fillStyle = "#ffffff";
+      octx.font = "bold 24px 'Malgun Gothic', sans-serif";
+      octx.fillText("구간 기록 타임라인", 32, 72);
+
+      const dateStr = new Date().toLocaleDateString("ko-KR");
+      const subSummary = isFocusLoopMode
+        ? `${dateStr}  |  집중 모드(50분/10분 반복)  |  총 ${lapRecords.length}개 구간`
+        : `${dateStr}  |  설정 구간 ${formatHMS(startSimMs)} ~ ${formatHMS(endSimMs)}  |  총 ${lapRecords.length}개 구간`;
+
+      octx.fillStyle = "#94a3b8";
+      octx.font = "14px Consolas, 'Malgun Gothic', sans-serif";
+      octx.fillText(subSummary, 32, 102);
+
+      lapRecords.forEach((rec, idx) => {
+        const y = headerHeight + 12 + idx * rowHeight;
+        const cardH = rowHeight - 10;
+
+        octx.fillStyle = "#ffffff";
+        octx.strokeStyle = "#cbd5e1";
+        octx.lineWidth = 1.5;
+        octx.beginPath();
+        octx.roundRect(28, y, width - 56, cardH, 10);
+        octx.fill();
+        octx.stroke();
+
+        octx.fillStyle = "#0f766e";
+        octx.beginPath();
+        octx.roundRect(28, y, 7, cardH, [10, 0, 0, 10]);
+        octx.fill();
+
+        octx.fillStyle = "#0f172a";
+        octx.font = "bold 18px 'Malgun Gothic', sans-serif";
+        octx.fillText(`${rec.icon}  ${rec.name}`, 50, y + 34);
+
+        octx.fillStyle = "#475569";
+        octx.font = "bold 14px Consolas, 'Malgun Gothic', sans-serif";
+        octx.fillText(`🕒 ${rec.digitalTime}`, 425, y + 34);
+
+        octx.fillStyle = "#0f766e";
+        octx.font = "bold 18px Consolas, 'Malgun Gothic', sans-serif";
+        octx.textAlign = "right";
+        octx.fillText(`+${rec.segmentStr}`, width - 46, y + 35);
+        octx.textAlign = "left";
+      });
+
+      octx.fillStyle = "#64748b";
+      octx.font = "12px 'Malgun Gothic', sans-serif";
+      octx.fillText("Analog & Digital Timer · Lap Export", 32, height - 18);
+
+      return off;
+    }
+
+    document.getElementById("copyImgBtn").addEventListener("click", async () => {
+      saveMenu.classList.remove("open");
+      const off = createLapReportCanvas();
+      if (!off) {
+        showToast("복사할 구간 기록이 없습니다.");
+        return;
+      }
+      if (!navigator.clipboard || !window.ClipboardItem) {
+        showToast("이 브라우저는 이미지 복사를 지원하지 않습니다. PNG 저장을 이용해 주세요.");
+        return;
+      }
+      off.toBlob(async (blob) => {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          showToast("구간 기록 이미지가 클립보드에 복사되었습니다.");
+        } catch (e) {
+          showToast("이미지 복사 권한을 확인해 주세요.");
+        }
+      }, "image/png");
+    });
+
+    document.getElementById("saveImgBtn").addEventListener("click", () => {
+      saveMenu.classList.remove("open");
+      const off = createLapReportCanvas();
+      if (!off) {
+        showToast("저장할 구간 기록이 없습니다.");
+        return;
+      }
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      a.href = off.toDataURL("image/png");
+      a.download = `구간기록_${stamp}.png`;
+      a.click();
+      showToast("PNG 이미지로 저장되었습니다.");
+    });
+
+    document.querySelectorAll('input[name="endMode"]').forEach((radio) => {
+      radio.addEventListener("change", () => {
+        isFocusLoopMode = false;
+        document.querySelectorAll(".preset-btn").forEach((b) => b.classList.remove("active-mode"));
+        const isDur = getSelectedEndMode() === "duration";
+        durationInputs.style.display = isDur ? "grid" : "none";
+        exactInput.style.display = isDur ? "none" : "block";
+        if (!running) resetClock();
+      });
+    });
+
+    document.getElementById("nowBtn").addEventListener("click", () => {
+      startTimeInput.value = formatHMS(getNowSecondsOfDay());
+      if (!running) resetClock();
+    });
+
+    [chkDigital, chkCountdown, chkCountup, chkSplit].forEach((chk) => {
+      chk.addEventListener("change", () => {
+        syncVisibility();
+        if (!running) resetClock();
+      });
+    });
+
+    document.getElementById("startBtn").addEventListener("click", startClock);
+    document.getElementById("resetBtn").addEventListener("click", resetClock);
+    document.getElementById("lapBtn").addEventListener("click", recordLap);
+    lapNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") recordLap();
+    });
+
+    document.getElementById("clearLapBtn").addEventListener("click", () => {
+      lapCount = 0;
+      lastLapElapsedMs = 0;
+      lapRecords = [];
+      renderLapList();
+      saveLapState();
+      showToast("구간 기록이 초기화되었습니다.");
+    });
+
+    const restored = loadLapState();
+    applyPreset("gongmuwon9");
+    startTimeInput.value = formatHMS(getNowSecondsOfDay());
+    syncVisibility();
+    resetClock();
+    if (restored) {
+      renderLapList();
+      showToast(`이전 구간 기록 ${lapRecords.length}개를 불러왔습니다.`);
+    }
+  </script>
+</body>
+</html>
